@@ -1,0 +1,171 @@
+---
+title: "cdd-lab1"
+author: "Thierry Barros"
+date: "April 25, 2018"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(here)
+theme_set(theme_bw())
+```
+
+```{r}
+episodes = read_csv(here("data/series_from_imdb.csv"), 
+                    progress = FALSE,
+                    col_types = cols(.default = col_double(), 
+                                     series_name = col_character(), 
+                                     episode = col_character(), 
+                                     url = col_character(),
+                                     season = col_character())) %>% 
+  filter(series_name %in% c("Supernatural", "New Girl", "Breaking Bad"))
+
+```
+#1. Escolha um subconjunto de séries (eu sugiro entre 2 e 4) para usar nesse problema.
+As séries escolhidas foram Supernatural, New Girl e Breaking bad.
+
+#Responda as seguintes duas perguntas: 
+#Qual das séries que você escolheu é mais bem avaliada no IMDB? A diferença é grande? Pequena? Muda de acordo com as temporadas da série? 
+Primeiro fizemos a média geral das avaliações de cada série e colocamos em ordem decrescente. Como podemos ver a série mais bem avaliada foi Breaking Bad. Mas a diferença não é mutio grande entra ela e sobrenatural, mas entre Breaking bad e New Girl tem uma diferença considerável. 
+```{r}
+avaliacao = group_by(episodes,series_name) %>% summarise(Total=mean(user_rating)) %>% arrange(Total)
+ggplot(avaliacao, aes(x=reorder(series_name, -Total), y=Total)) + geom_bar(stat = "identity") +xlab("Nome da série") +
+  ylab("Média Geral")
+```
+
+Para termos uma noção melhor da série mais bem avaliada a metodologia foi agrupar os dados por série e por temporada, depois fazer a média das notas de cada epsódio por temporada. Usamos o ggplot para ter uma vizualização dos resultados e o geom_bar para ilustrar a média. O eixo y representa a média de cada temporada e o eixo x as temporadas de cada série. OBS: Alguns valores não ter resultado, pois o número de temporadas por série é diferente.
+
+Podemos ver que a média de avalição por temporada não muda muito em New Girl e Sobrenatural. Mas em Breaking bad ela foi aumentando indicando que a série foi melhorando a cada temporada.
+
+
+```{r}
+media = group_by(episodes,series_name,season)%>%  summarise(Total=mean(user_rating))
+ggplot(media, aes(x=season, y=Total)) + geom_bar(stat = "identity")+
+facet_wrap(~ series_name) + xlab("Temporada") + ylab("Média por Temporada")
+```
+
+
+#b. Qual das séries que você escolheu tem episódios de qualidade mais irregular segundo o IMDB? A diferença é grande? Pequena?
+
+Para responder essa pergunta utilizamos o desvio padrão. 
+
+Primeiro fizemos o desvio padrão geral de cada série. Podemos ver que a maior variação de qualidade é na série Sobrenatural.
+```{r}
+desvio_padrao = group_by(episodes,series_name) %>% summarise(desvio=sd(user_rating)) 
+ggplot(desvio_padrao , aes(x=reorder(series_name, -desvio), y=desvio)) + geom_bar(stat = "identity") +xlab("Nome da série") +
+ylab("Desvio Padrão Geral")
+```
+
+Depois Separamos os dados por série para calcular o desvio padrão de cada um.
+```{r}
+supernatural = episodes %>% filter(series_name == "Supernatural")
+newGirl = episodes %>% filter(series_name == "New Girl")
+breakingBad = episodes %>% filter(series_name == "Breaking Bad")
+
+s_desvio = group_by(supernatural,season) %>% summarise(desvio=sd(user_rating)) 
+n_desvio = group_by(newGirl,season) %>% summarise(desvio=sd(user_rating)) 
+b_desvio = group_by(breakingBad,season) %>% summarise(desvio=sd(user_rating)) 
+```
+
+Calculamos o desvio padrão de cada temporada de cada série para ver a variação de qualidade por temporada.
+
+Sobrenatural:
+```{r}
+s_desvio %>% 
+  ggplot(aes(x = season, y = desvio, color = season)) + 
+  geom_bar(stat = "identity") +xlab("Desvio padrão") +
+  ylab("Temporada")
+```
+
+New girl:
+```{r}
+n_desvio %>% 
+  ggplot(aes(x = season, y = desvio, color = season)) + 
+  geom_bar(stat = "identity")+xlab("Desvio padrão") +
+  ylab("Temporada")
+```
+
+
+Breaking Bad:
+```{r}
+b_desvio %>% 
+  ggplot(aes(x = season, y = desvio, color = season)) + 
+  geom_bar(stat = "identity") +xlab("Desvio padrão") +
+  ylab("Temporada")
+```
+
+Para ter uma noção ainda melhor usamos as avaliação dadas por ep de cada temporada de cada série, para ver como é a variação de qualidade.
+
+Podemos perceber que em breaking bad na 3° temporada do episódio 5 ao 10 tem uma queda brusca de qualidade.
+
+```{r}
+breakingBad %>% 
+  ggplot(aes(x = season_ep, y = user_rating, color = season)) + 
+  geom_line() + 
+  geom_point() +
+  facet_wrap(~ season)+ xlab("Episódio por Temporada") +
+  ylab("Avaliação")
+```
+
+Em sobrenaturla a maior queda foi na temporada 9 episódio 20.
+
+```{r}
+supernatural %>% 
+  ggplot(aes(x = season_ep, y = user_rating, color = season)) + 
+  geom_line() + 
+  geom_point() +
+  facet_wrap(~ season)+ xlab("Episódio por Temporada") +
+  ylab("Avaliação")
+```
+
+Em New Girl o contrário podemos ver que o último episódio da 6° temporada teve uma avaliação muito boa, comparado aos outros.
+
+```{r}
+newGirl %>% 
+  ggplot(aes(x = season_ep, y = user_rating, color = season)) + 
+  geom_line() + 
+  geom_point() +
+  facet_wrap(~ season)+ xlab("Episódio por Temporada") +
+  ylab("Avaliação")
+```
+
+Agora outra forma de vizualizarmos foi utilização do boxplot para ver o IQR, por série e por temporada.
+
+```{r}
+breakingBad %>% 
+    ggplot(aes(x = season, y = user_rating)) + 
+    geom_boxplot(width = .5, outlier.color = NA) +   
+    geom_jitter(width = .1, size = 2, alpha = .5, color = "red")+ xlab("Temporada") +
+  ylab("Avaliação")
+```
+
+```{r}
+supernatural %>% 
+    ggplot(aes(x = season, y = user_rating)) + 
+    geom_boxplot(width = .5, outlier.color = NA) +   
+    geom_jitter(width = .1, size = 2, alpha = .5, color = "red")+ xlab("Temporada") +
+  ylab("Avaliação")
+```
+```{r}
+newGirl %>% 
+    ggplot(aes(x = season, y = user_rating)) + 
+    geom_boxplot(width = .5, outlier.color = NA) +   
+    geom_jitter(width = .1, size = 2, alpha = .5, color = "red")+ xlab("Temporada") +
+  ylab("Avaliação")
+```
+
+Por fim, existe valores estranhos nas três séries, mas no geral a variação não é muito grande, entre as temporadas. A frequência de valores parece ficar entre 7,5 e 8,5.
+
+
+
+
+
+
