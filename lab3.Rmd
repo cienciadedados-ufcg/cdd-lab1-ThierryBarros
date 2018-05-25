@@ -1,0 +1,44 @@
+---
+title: "Prob 2, CP 1 - Revisitando uma visualização sua"
+author: "Thierry Barros"
+date: "May 24, 2018"
+output: html_document
+---
+```{r}
+
+```
+
+
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(here)
+library(plotly)
+theme_set(theme_bw())
+```
+```{r}
+data = read_csv(here("/data/series_from_imdb.csv"), progress = FALSE,
+                    col_types = cols(.default = col_double(), 
+                                     series_name = col_character(), 
+                                     episode = col_character(), 
+                                     url = col_character(),
+                                     season = col_character()))
+```
+
+```{r}
+  data %>%
+    filter(series_name %in% c("Supernatural", "New Girl", "Breaking Bad")) %>%
+    group_by(series_name) %>% 
+    plot_ly(x = ~series_ep, y = ~user_rating, colors =  c("blue", "red", "green"), text = ~paste("Season: ", season, ' Episode:', season_ep, 'User Rating:', user_rating)) %>% 
+        add_markers(size = ~user_votes, color = ~series_name) %>%
+        layout(yaxis = list(title = "Avaliação do público"), xaxis = list(title = "% Episódio da série"))
+```
+
+O gráfico acima mostra dados das séries Breaking bad, supernatural e new girl. Com ele podemos ver que as 3 séries possuem um comportamento diferente quanto às avaliações. Para a série Breaking bad vemos que a série começa com avaliações altas nos primeiros episódios e vai crescendo ao se aproximar do fim. Na minha opinião esse comportamento se dá pelo fato de ser um série de ótima qualidade com momentos de maior empolgação nas fases finais. Já na série supernatural, nós temos uma média de avaliações que se mantem ao longo de toda série, com uma aleatóriedade dependendo do episódio. Isso pode ocorrer por se tratar de uma série que possuem episódios independentes um do outro, ou seja, os episódios não são uma sequencia de fatos que culminam em algo, o que ajuda a manter a nota sempre na mesma média, com alguns que podem ser excepcionalmente muito melhores que os outros ou com a qualidade muito menor que o esperado, o que é completamente diferente da série New girl, que possui suas notas em um padrão médio baixo, uma queda nas avaliações no final. Ao analisar o gráfico, podemos ver que os episódios de ápice se encontram no inicio da série, o que nos leva a supor que esse comportamento se dá pela sequencia de fatos proposta pela série que não foi de acordo com a espectativa e perde o interesse dos fãs.
+
+
+
+
+
+
+
