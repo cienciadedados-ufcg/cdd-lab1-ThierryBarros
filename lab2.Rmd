@@ -20,7 +20,6 @@ theme_set(theme_bw())
 
 
 
-
 ```{r}
 episodes = read_csv(here("data/series_from_imdb.csv"), 
                     progress = FALSE,
@@ -35,11 +34,11 @@ seriesLongas = group_by(episodes,series_name) %>% summarise(NTemporadas=n_distin
 top40 = head(seriesLongas, n=40)
 
 series8temporadas = top40 %>% filter(NTemporadas==8)
-
 ```
 #1. Séries com muitas temporadas mantém a qualidade nas avaliações?
   
   Para analisar e responder essa questão selecionei 10 séries com 8 temporadas. Fizemos um gráfico para ver a variação da média de avalição dos usuários no decorrer das temporadas.
+  
 ```{r}
 series8temporadas = episodes %>% filter(series_name %in% series8temporadas$series_name )
 
@@ -50,8 +49,9 @@ avaliacao %>%  ggplot(aes(x = season, y = Total, color = season)) +
   facet_wrap(~ series_name)+ xlab("Temporadas") +
   ylab("Média de Avaliação")
 
-avaliacaoDesvio = group_by(series8temporadas,series_name) %>% summarise(Desvio=sd(user_rating)) 
-avaliacaoDesvio[order(avaliacaoDesvio$Desvio),]
+avaliacaoDesvio = group_by(series8temporadas,series_name) %>% 
+    summarise(Desvio=round(sd(user_rating), 2)) 
+knitr::kable(avaliacaoDesvio[order(avaliacaoDesvio$Desvio),], col.names = c("Série", "Desvio Padrão"))
 ```
 
   Olhando podemos ver que em geral as séries tem um inicio mediano, tendem a melhorar até a metade da temporadas e tem um decaída pro final. Mas a variação das médias de notas por temporadas não é muito grande fica em torno de 0.5 pontos para mais ou menos.
@@ -63,9 +63,14 @@ avaliacao %>%
     geom_jitter(width = .1, size = 2, alpha = .5, color = "red") 
 ```
 
-  Outra maneira de vizualizar esses dados é utilizando box_plot para notar a dispersão das notas por temporadas, a variação em geral não passar de 1 ponto de diferença, reforçando a hipótese de que séreis grandes mantém a qualidade.
+  Outra maneira de vizualizar esses dados é utilizando box plot para notar a dispersão das notas por temporadas, a variação em geral não passa de 1 ponto de diferença, reforçando a hipótese de que séries grandes mantém a qualidade.
   
-#Essa próxima análise foi só para checar se existe alguma relação entre o número de votos e o média de avalição nas séries. E também se tem relação entre o número de episódios e a popularidade da série.
+#1.1. Existe alguma relação entre o número de votos e o média de avalição nas séries? Existe relação entre o número de episódios e a popularidade da série.
+
+Para responder as duas perguntas, calcularemos a correlação linear entre as variáveis.
+
+* Número de votos e Média de avaliação:
+
 
 ```{r}
 
@@ -73,40 +78,48 @@ seriesMaisVotadas = group_by(episodes,series_name) %>% summarise(Media = mean(us
 
 
 cor(seriesMaisVotadas$Media,seriesMaisVotadas$NVotos)
+```
 
-
+* Número de votos e Popularidade da série
+```{r}
 seriesLongasEP = group_by(episodes,series_name) %>% summarise(NEpisodios=n(),Popularidade = sum(user_votes)) %>% arrange(desc(NEpisodios))
 
 
 cor(seriesLongasEP$NEpisodios,seriesLongasEP$Popularidade)
-
-
 ```
 
-O valores de correlação pra os dois casos foram pequenos, mostrando assim que a relação é fraca.
+O valores de correlação pra os dois casos foram pequenos, mostrando uma correlação linear positiva fraca.
 
 
 #2. Como se comporta o número de votos por episódio ao decorrer das temporadas?
-  Isso é pra avaliar se a populariade da série aumenta com o decorrer das temporadas.
+
+  Aqui estamos interessados em avaliar se a populariade da série aumenta com o decorrer das temporadas.
   Para responder essa questão eu utilizei os dados da série Sobrenatural que tem 12 temporadas.
 
 ```{r}
 supernatural = episodes %>% filter(series_name == "Supernatural" )
 
 
-
-
 supernatural %>%  ggplot(aes(x = season_ep, y = user_votes, color = season)) + 
   geom_line() + 
   geom_point() +
-  facet_wrap(~ season)+ xlab("Episódio") +
+  facet_wrap(~ as.integer(season)) + 
+  xlab("Episódio") +
   ylab("Numero de votos")
-
-
 ```
+
+>> O gráfico abaixo é uma opção de visualização que facilita a comparação entre temporadas e permite observar de maneira geral o número de votos.
+
 ```{r}
+supernatural %>%  ggplot(aes(x = series_ep, y = user_votes, color = season)) + 
+  geom_line() + 
+  geom_point() +
+  xlab("Episódio") +
+  ylab("Numero de votos") 
+```
 
 
+```{r}
 supernatural %>% 
     mutate (Serie = series_name) %>% 
     ggplot(aes(x = season, 
@@ -121,30 +134,31 @@ supernatural %>%
 
   Pelos gráficos podemos ver que em relação a episódios em cada temporadas se mantém bem constante com pouca variação, exceto alguns picos em episódios, e em relação as temporadas o número de votos também não varia muito. Podemos concluir que popularidade da série se mantem ao longo das temporadas.
 
+>> Removi o atributo cor do gráfico abaixo pois me pareceu que ele não adicionava nenhuma informação nova ao gráfico nem ajudava a observar as existentes
+
 ```{r}
-votosPorTemporada = group_by(supernatural,season_ep) %>% summarise(Media = (sum(user_votes)/n())) %>% arrange(desc(Media))
-votosPorTemporada %>%  ggplot(aes(x = season_ep, y = Media, color = season_ep)) + 
-  geom_line() + 
-  geom_point() +
+votosPorTemporada = group_by(supernatural,season_ep) %>% summarise(Media = mean(user_votes)) %>% arrange(desc(Media))
+votosPorTemporada %>%  ggplot(aes(x = season_ep, y = Media)) + 
+  geom_line(color = "darkblue") + 
+  geom_point(color = "darkblue") +
  xlab("Episódio") +
   ylab("Numero de votos")
 ```
 
-  Outra análise que podemos fazer é por episódio em cada temporada, se o primeiro episódio é mais popular que o segundo, e segundo que o terceiro e assim por diante em geral. Podemo ver que o primeiro épisódio em geral é mais popular doque o resto,mas em geral os episódio mantem uma proximidade no numero de votos.Podemos notar que o número do episódio não influencia muito em sua popularidade, exceto pelo primeiro que o último.
+  Outra análise que podemos fazer é por episódio em cada temporada, se o primeiro episódio é mais popular que o segundo, e segundo que o terceiro e assim por diante em geral. Podemos ver que o primeiro episódio em geral é mais popular doque o resto, mas em geral os episódio mantem uma proximidade no numero de votos. Podemos notar que o número do episódio não influencia muito em sua popularidade, exceto pelo primeiro que o último.
 
 ```{r}
-votosPorTemporada = group_by(episodes,season_ep) %>% summarise(Media = (sum(user_votes)/n())) %>% arrange(desc(Media))
-votosPorTemporada %>%  ggplot(aes(x = season_ep, y = Media, color = season_ep)) + 
-  geom_line() + 
-  geom_point() +
-  
+votosPorTemporada = group_by(episodes,season_ep) %>% summarise(Media = mean(user_votes)) %>% arrange(desc(Media))
+votosPorTemporada %>%  ggplot(aes(x = season_ep, y = Media)) + 
+  geom_line(color = "darkred") + 
+  geom_point(color = "darkred") +
  xlab("Episódio") +
   ylab("Numero de votos")
 ```
 
-  Analisando o gráfico acima podemos ver que quanto maior o número de episódio por temporada mais impopular ela fica. Séries com temporadas muito grande tendem a perder o púclico. Podemos concluir que séries com muitos epísódios são menos populares.
+  Analisando o gráfico acima podemos ver que quanto maior o número de episódio por temporada mais impopular ela fica. Séries com temporadas muito grandes tendem a perder o público. Podemos concluir que séries com muitos epísódios são menos populares.
 
-#As melhores séries são maiores que a piores?
+#2.2. As melhores séries são maiores que a piores?
 
 ```{r}
 melhores_series = group_by(episodes,series_name) %>% summarise(Tamanho = n(),avaliação = mean(user_rating)) %>% arrange(desc(avaliação))
@@ -159,13 +173,15 @@ piores %>%  ggplot(aes(x = avaliação, y = Tamanho, color=Tamanho)) +
   geom_line() + 
   geom_point() 
 
+
+
 ```
 
   O tamanho da série não influência na avaliação final da série. As piores estão entre 1 e 100 episódios, e a melhores também seguem o mesmo padrão.
   
-#O tamanho da temporada influencia na avaliação?
+#2.3. O tamanho da temporada influencia na avaliação?
 
-  Para responder essa questão foram pegos as 15 maiores e menores temporadas.
+  Para responder essa questão foram pegas as 15 maiores e menores temporadas.
 ```{r}
 maioresTemporadas = group_by(episodes,series_name,season) %>% summarise(Tamanho = n(),avaliação = mean(user_rating)) %>% arrange(desc(Tamanho))
 
@@ -182,6 +198,6 @@ menoresTemporadas10 %>%  ggplot(aes(x = Tamanho, y = avaliação, color=Tamanho)
 
 ```
 
-  Pelos gráficos podemos ver que temporadas bem pequenas tendem a variar muito sua avalição, enquanto temporadas muito grande tem uma variação menor ficando com a nota em médio perto de 7.5.
+  Pelos gráficos podemos ver que temporadas bem pequenas tendem a variar muito sua avalição, enquanto temporadas muito grandes tem uma variação menor ficando com a nota em médio perto de 7.5.
 
 
